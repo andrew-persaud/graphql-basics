@@ -48,6 +48,7 @@ const Mutation = {
         }
 
         const emailAlreadyExists = db.users.some((user) => user.email === data.email)
+
         if(emailAlreadyExists) {
             throw new Error('Email in use. Please choose another')
         }
@@ -55,15 +56,9 @@ const Mutation = {
             throw new Error('Please enter valid age');
         }
 
-        if(data.email) {
-            user.email = data.email
-        }
-        if(data.name) {
-            user.name = data.name
-        }
-        if(data.age) {
-            user.age = data.age
-        }
+        user.email = data.email || user.email
+        user.name = data.name || user.name
+        user.age = data.age || user.age
 
         return user;
 
@@ -100,7 +95,7 @@ const Mutation = {
         if (!post) {
             throw new Error('Post does not exist.')
         }
-        
+
         post.title = data.title || post.title
         post.body = data.body || post.body
         post.published = data.published || post.published
