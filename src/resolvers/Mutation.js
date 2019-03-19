@@ -64,7 +64,7 @@ const Mutation = {
 
 
     },
-    createPost(parent, args, { db }, info) {
+    createPost(parent, args, { db, pubsub }, info) {
         const userExists = db.users.some((user) => args.data.author === user.id)
 
         if (!userExists) {
@@ -77,20 +77,39 @@ const Mutation = {
         }
 
         db.posts.push(post);
+        if (post.published === true) {
+            pubsub.publish("post", {
+                post : {
+                    mutation: 'CREATED',
+                    data: post
+                }
+            })
+        }
+       
         return post;
     },
-    deletePost(parent, args, { db }, info) {
+    deletePost(parent, args, { db, pubsub }, info) {
         const idx = db.posts.findIndex((post) => post.id === args.id)
         if(idx === -1) {
             throw new Error("Post does not exist.")
         }
         const post = db.posts.splice(idx,1)[0]
         db.comments = db.comments.filter((comment) => comment.post !== post.id);
+
+        if (post.published === true) {
+            pubsub.publish('post', {
+                post : {
+                    mutation: 'DELETED',
+                    data: post
+                }
+            })
+        }
         return post;
     },
-    updatePost(parent, args, { db }, info) {
+    updatePost(parent, args, { db, pubsub }, info) {
         const { id, data } = args
         const post = db.posts.find((post) => post.id === id)
+        const unalteredPost = {...post}
 
         if (!post) {
             throw new Error('Post does not exist.')
@@ -100,10 +119,33 @@ const Mutation = {
         post.body = data.body || post.body
         post.published = data.published || post.published
 
+        if (unalteredPost.published && !post.published) {
+            pubsub.publish('post', {
+                post: {
+                    mutation: 'DELETED',
+                    data: post
+                }
+            })
+        } else if (!unalteredPost.published && post.publised) {
+            pubsub.publish('post', {
+                post: {
+                    mutation: 'CREATED',
+                    data: post
+                }
+            })
+        } else if((data.title || data.body) && post.published)  {
+            pubsub.publish('post', {
+                post : {
+                    mutation: 'UPDATED',
+                    data: post
+                }
+            })
+        }
+
         return post
         
     },
-    createComment(parent, args, { db }, info) {
+    createComment(parent, args, { db, pubsub }, info) {
         const userExists = db.users.some((user) => user.id === args.data.author)
         if (!userExists) {
             throw new Error('User does not exist.')
@@ -117,18 +159,35 @@ const Mutation = {
             id: uuidv4(),
             ...args.data
         }
-
+        db.comments.push(comment)
+        pubsub.publish(`comment: ${args.data.post}`, {
+            comment: {
+                mutation: 'CREATED',
+                data: comment
+                
+            }
+        })
         return comment;
     },
-    deleteComment(parent, args, { db }, info) {
+    deleteComment(parent, args, { db, pubsub }, info) {
         const idx = db.comments.findIndex((comment) => comment.id === args.id)
         if (idx === -1) {
             throw new Error("Comment does not exist.")
         }
-        return db.comments.splice(idx, 1)[0]
+        const removedComment = db.comments.splice(idx, 1)[0]
+
+        pubsub.publish(`comment: ${removedComment.post}`, {
+            comment: {
+                mutation: 'DELETED',
+                data: removedComment
+            }
+        } )
+
+        return removedComment
+
 
     },
-    updateComment(parent, args, { db }, info) {
+    updateComment(parent, args, { db, pubsub }, info) {
         const { id, data } = args;
         const comment = db.comments.find((comment) => comment.id === id)
 
@@ -137,6 +196,12 @@ const Mutation = {
         }
 
         comment.text = data.text || comment.text
+        pubsub.publish(`comment: ${comment.post}`, {
+            comment: {
+                mutation: 'UPDATED',
+                data: comment
+            }
+        })
 
         return comment;
     }

@@ -21,12 +21,14 @@ const posts = [{
     id: "12" ,
     title: 'Go Leafs Go' ,
     body: 'Scoreee',
-    author: '12346'
+    author: '12346',
+    published: true
 }, {
     id: "13" ,
     title: 'Go do Homework' ,
     body: 'Nowwwww.',
-    author: '12346'
+    author: '12346',
+    published: false
 }]
 
 const comments = [{
