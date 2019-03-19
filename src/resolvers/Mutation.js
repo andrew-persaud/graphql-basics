@@ -100,18 +100,10 @@ const Mutation = {
         if (!post) {
             throw new Error('Post does not exist.')
         }
-
-        if (data.title) {
-            post.title = data.title;
-        }
-
-        if (data.body) {
-            post.body = data.body
-        }
-
-        if(data.published) {
-            post.published = data.published
-        }
+        
+        post.title = data.title || post.title
+        post.body = data.body || post.body
+        post.published = data.published || post.published
 
         return post
         
@@ -149,9 +141,7 @@ const Mutation = {
             throw new Error('Comment does not exist.')
         }
 
-        if (data.text) {
-            comment.text = data.text
-        }
+        comment.text = data.text || comment.text
 
         return comment;
     }
